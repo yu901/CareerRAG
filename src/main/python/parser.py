@@ -6,10 +6,11 @@ from pyspark.sql.types import StringType
 import re
 
 def clean_text(text: str) -> str:
-    """텍스트 정제 (불필요한 문자, 공백 제거)."""
+    """텍스트 정제 (불필요한 문자, 공백, HTML 태그 제거)."""
     if not text:
         return ""
-    text = re.sub(r'\s+', ' ', text)  # 중복 공백 제거
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\s+', ' ', text)
     text = text.strip()
     return text
 
@@ -36,9 +37,12 @@ def main():
     df.printSchema()
     df.show(5, truncate=False)
 
-    # 데이터 정제
-    processed_df = df.withColumn("cleaned_title", clean_text_udf(col("title")))
-    final_df = processed_df.select("company", "cleaned_title", "link", "keyword")
+    # 데이터 정제 (title 및 description 컬럼에 UDF 적용)
+    processed_df = df.withColumn("cleaned_title", clean_text_udf(col("title")))\
+                     .withColumn("cleaned_description", clean_text_udf(col("description")))
+    
+    # 필요 컬럼 선택
+    final_df = processed_df.select("company", "cleaned_title", "cleaned_description", "link", "keyword")
 
     print("Processed data schema:")
     final_df.printSchema()
