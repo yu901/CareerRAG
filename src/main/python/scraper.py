@@ -146,7 +146,8 @@ def get_job_postings(keyword: str, num_pages: int = 10):
             
     return job_postings
 
-if __name__ == "__main__":
+def main():
+    """스크레이핑을 실행하고 결과를 파일에 저장합니다."""
     # 데이터 저장 디렉토리 생성
     if not os.path.exists("data"):
         os.makedirs("data")
@@ -161,3 +162,6 @@ if __name__ == "__main__":
 
     print(f"Successfully scraped {len(postings)} job postings for '{search_keyword}'.")
     print(f"Data saved to {file_path}")
+
+if __name__ == "__main__":
+    main()

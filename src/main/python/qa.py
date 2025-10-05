@@ -94,17 +94,3 @@ class CareerRAG:
             print(f"    Link: {doc.metadata.get('link', 'N/A')}")
         
         return result
-
-if __name__ == '__main__':
-    # 시스템 초기화
-    try:
-        rag_system = CareerRAG()
-        
-        # 테스트 질문
-        rag_system.ask("서울에서 근무하는 데이터 엔지니어 채용 정보 알려줘")
-        rag_system.ask("머신러닝 엔지니어 직무는 어떤 일을 해?") # DB에 없는 내용
-
-    except FileNotFoundError as e:
-        print(e)
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")

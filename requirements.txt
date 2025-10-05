@@ -17,3 +17,6 @@ Pillow
 pytesseract
 transformers
 torch
+apache-airflow
+psycopg2-binary
+asyncpg
