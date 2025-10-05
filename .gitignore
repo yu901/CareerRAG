@@ -118,3 +118,4 @@ cython_debug/
 # CareerRAG specific
 data/
 chroma/
+ollama/

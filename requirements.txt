@@ -15,3 +15,5 @@ pandas
 sentence-transformers
 Pillow
 pytesseract
+transformers
+torch
