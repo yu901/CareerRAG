@@ -52,16 +52,16 @@ def ask_question(request: QueryRequest):
     
     try:
         result = rag_system.ask(request.query)
-        
+
         sources = [
             {
-                "title": doc.metadata.get('cleaned_title', 'N/A'),
-                "company": doc.metadata.get('company', 'N/A'),
-                "link": doc.metadata.get('link', 'N/A')
+                "title": doc.get('cleaned_title', 'N/A'),
+                "company": doc.get('company', 'N/A'),
+                "link": doc.get('link', 'N/A')
             }
             for doc in result["source_documents"]
         ]
-        
+
         return AnswerResponse(answer=result["result"], sources=sources)
 
     except Exception as e:

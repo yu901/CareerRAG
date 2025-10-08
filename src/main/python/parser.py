@@ -7,45 +7,34 @@ from src.main.python.utils import load_config, ensure_dir, clean_text
 
 
 def process_partition(iterator, use_summarization=True):
-    # 파티션당 한 번만 모델 로딩
-    summarization_chain = None
+    # 파티션당 한 번만 LLM 로딩
+    extraction_llm = None
     if use_summarization:
         try:
-            import warnings
-            import logging
-            import os
-
-            # 경고 메시지 억제
-            warnings.filterwarnings('ignore')
-            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-            logging.getLogger("transformers").setLevel(logging.ERROR)
-
-            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
-            from langchain_huggingface.llms import HuggingFacePipeline
+            from langchain_community.llms import Ollama
             from langchain_core.prompts import PromptTemplate
+            import logging
 
-            model_name = "gogamza/kobart-summarization"
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModelForSeq2SeqLM.from_pretrained(model_name, ignore_mismatched_sizes=True)
-            summarization_pipeline = pipeline(
-                "summarization",
-                model=model,
-                tokenizer=tokenizer,
-                max_length=200,
-                min_length=30,
-                do_sample=False
+            logger = logging.getLogger(__name__)
+            logger.setLevel(logging.INFO)
+
+            # Ollama LLM 초기화 (Docker 내부에서 실행 시)
+            extraction_llm = Ollama(
+                model="gemma:2b",
+                base_url="http://ollama:11434",
+                temperature=0.1  # 일관성 있는 결과를 위해 낮은 temperature
             )
-            llm = HuggingFacePipeline(pipeline=summarization_pipeline)
-            prompt_template = """Summarize the following Korean job posting:\n\n        {text}\n\n        Summary:"""
-            prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
-            summarization_chain = prompt | llm
-        except Exception:
-            summarization_chain = None
 
+            logger.info("LLM for structured extraction loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load LLM: {e}")
+            extraction_llm = None
+
+    # 더 다양한 패턴 지원
     patterns = {
-        "responsibilities": r"(담당업무|주요업무|업무내용)(.*?)(지원자격|자격요건|우대사항|복리후생|근무조건|채용절차|$)",
-        "qualifications": r"(지원자격|자격요건|필수요건)(.*?)(우대사항|복리후생|근무조건|채용절차|$)",
-        "preferences": r"(우대사항)(.*?)(복리후생|근무조건|채용절차|$)",
+        "responsibilities": r"(담당업무|주요업무|업무내용|업무|수행업무|주요\s*업무|담당\s*업무|Job Description|Responsibilities)(.*?)(지원자격|자격요건|필수요건|우대사항|복리후생|근무조건|채용절차|전형절차|기타|$)",
+        "qualifications": r"(지원자격|자격요건|필수요건|필수\s*자격|지원\s*자격|Required Qualifications|Requirements)(.*?)(우대사항|우대요건|복리후생|근무조건|채용절차|전형절차|기타|$)",
+        "preferences": r"(우대사항|우대요건|우대\s*사항|가산점|Preferred Qualifications|Nice to Have)(.*?)(복리후생|근무조건|근무환경|혜택|채용절차|전형절차|기타|$)",
     }
 
     for row in iterator:
@@ -66,13 +55,51 @@ def process_partition(iterator, use_summarization=True):
                         sections[key] = section_content
                         extracted = True
 
-            if not extracted and summarization_chain:
+            # 정규표현식 실패 시 LLM으로 구조화된 정보 추출
+            if not extracted and extraction_llm:
                 try:
-                    summary = summarization_chain.invoke({"text": text})
-                    sections["responsibilities"] = summary
-                except Exception:
+                    # 프롬프트 생성
+                    prompt = f"""다음은 채용 공고 내용입니다. 담당업무, 자격요건, 우대사항을 추출하여 JSON 형식으로 반환하세요.
+정보가 없는 항목은 빈 문자열로 남겨두세요.
+
+채용 공고:
+{text[:2000]}
+
+JSON 형식으로만 답변하세요:
+{{"responsibilities": "담당업무 내용", "qualifications": "자격요건 내용", "preferences": "우대사항 내용"}}
+
+JSON:"""
+
+                    result = extraction_llm.invoke(prompt)
+
+                    # JSON 파싱 시도
+                    import json
+                    # 결과에서 JSON 부분만 추출
+                    json_start = result.find('{')
+                    json_end = result.rfind('}') + 1
+
+                    if json_start != -1 and json_end > json_start:
+                        json_str = result[json_start:json_end]
+                        extracted_data = json.loads(json_str)
+
+                        sections["responsibilities"] = extracted_data.get("responsibilities", "").strip()
+                        sections["qualifications"] = extracted_data.get("qualifications", "").strip()
+                        sections["preferences"] = extracted_data.get("preferences", "").strip()
+
+                        # 성공 로그는 제거 (너무 많아서)
+                    else:
+                        # JSON 파싱 실패 시 전체 텍스트 사용
+                        sections["responsibilities"] = text
+                        import logging
+                        logging.getLogger(__name__).warning(f"LLM JSON parsing failed for {row.company}")
+
+                except Exception as e:
+                    # LLM 실패 시 전체 텍스트 사용
                     sections["responsibilities"] = text
+                    import logging
+                    logging.getLogger(__name__).warning(f"LLM extraction error for {row.company}: {e}")
             elif not extracted:
+                # LLM 사용 안함 설정이거나 로드 실패 시
                 sections["responsibilities"] = text
 
         yield Row(
@@ -82,7 +109,8 @@ def process_partition(iterator, use_summarization=True):
             qualifications=sections["qualifications"],
             preferences=sections["preferences"],
             link=row.link,
-            keyword=row.keyword
+            keyword=row.keyword,
+            description=text if text else ""  # 원문 보존
         )
 
 def main(input_dir=None, output_dir=None, use_summarization=None, **kwargs):
@@ -120,6 +148,7 @@ def main(input_dir=None, output_dir=None, use_summarization=None, **kwargs):
             StructField("preferences", StringType(), True),
             StructField("link", StringType(), True),
             StructField("keyword", StringType(), True),
+            StructField("description", StringType(), True),  # 원문 필드 추가
         ])
 
         final_df = spark.createDataFrame(processed_rdd, schema)

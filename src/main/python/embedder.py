@@ -64,8 +64,15 @@ def main(input_dir=None, chroma_path=None, collection_name=None, embedding_model
             metadata={"hnsw:space": "cosine"}
         )
 
-        # 임베딩 데이터 준비
-        documents = (pandas_df["cleaned_title"] + " (" + pandas_df["keyword"] + ")").tolist()
+        # 임베딩 데이터 준비 - 모든 중요 필드 포함
+        documents = (
+            pandas_df["cleaned_title"] + " | " +
+            pandas_df["company"] + " | " +
+            pandas_df["responsibilities"].fillna("") + " | " +
+            pandas_df["qualifications"].fillna("") + " | " +
+            pandas_df["preferences"].fillna("") + " | " +
+            pandas_df["keyword"]
+        ).tolist()
         metadatas = pandas_df.to_dict('records')
         ids = [f"post_{i}" for i in range(len(documents))]
 
