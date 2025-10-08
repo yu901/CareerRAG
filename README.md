@@ -75,12 +75,7 @@ docker compose up --build --remove-orphans
 
 1.  **Airflow UI 접속**: 웹 브라우저에서 **http://localhost:8080**으로 접속하여 Airflow UI를 엽니다.
 
-2.  **로그인**:
-    - **사용자 이름**: `admin`
-    - **비밀번호**: 아래 명령어를 터미널에서 실행하여 컨테이너 내부에 저장된 비밀번호를 확인합니다.
-        ```bash
-        docker compose exec career-rag-airflow-standalone cat /opt/airflow/simple_auth_manager_passwords.json.generated
-        ```
+2.  **로그인**: `admin` / `admin` (Dockerfile에서 고정 비밀번호 설정)
 
 3.  **DAG 실행**: DAG 목록에서 `career_rag_pipeline`을 찾습니다. 해당 DAG의 오른쪽에 있는 **실행(▶) 버튼**을 눌러 DAG를 수동으로 트리거합니다.
 

@@ -17,7 +17,12 @@ WORKDIR /opt/airflow
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libpq-dev \
-    && apt-get clean
+    default-jdk-headless \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# 5-1. JAVA_HOME 환경 변수 설정
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+ENV PATH=$PATH:$JAVA_HOME/bin
 
 # 6. requirements.txt 복사 및 Python 의존성 설치
 COPY requirements.txt requirements.txt
@@ -26,6 +31,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 7. 소스 코드 및 DAGs 복사
 COPY src/ /opt/airflow/src/
 COPY dags/ /opt/airflow/dags/
+
+# 7-1. Airflow 고정 비밀번호 설정
+RUN mkdir -p /opt/airflow && \
+    echo '{"admin": "admin"}' > /opt/airflow/simple_auth_manager_passwords.json.generated
 
 # 8. 포트 노출
 EXPOSE 8000 8080 5555

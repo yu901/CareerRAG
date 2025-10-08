@@ -1,0 +1,12 @@
+{
+  "search_keywords": ["데이터엔지니어", "데이터분석가"],
+  "pages_per_keyword": 3,
+  "scraper_output_dir": "data/raw",
+  "parser_input_dir": "data/raw",
+  "parser_output_dir": "data/processed",
+  "use_summarization": true,
+  "embedder_input_dir": "data/processed",
+  "chroma_path": "chroma/career_rag_db",
+  "collection_name": "job_postings",
+  "embedding_model": "jhgan/ko-sroberta-multitask"
+}

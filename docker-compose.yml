@@ -8,6 +8,7 @@ x-airflow-common:
   volumes:
     - ./src:/opt/airflow/src
     - ./dags:/opt/airflow/dags
+    - ./config:/opt/airflow/config
     - ./data:/opt/airflow/data
     - ./chroma:/opt/airflow/chroma
     - ./logs:/opt/airflow/logs
