@@ -18,6 +18,11 @@ def load_config(file_path="config/default_variables.json") -> Dict[str, Any]:
     # Airflow Variable 로드 시도
     try:
         from airflow.models import Variable
+        import logging
+
+        # Variable 조회 시 발생하는 에러 로그 억제
+        logging.getLogger('airflow.models.variable').setLevel(logging.CRITICAL)
+        logging.getLogger('airflow.sdk.api.client').setLevel(logging.CRITICAL)
 
         config = {}
         for key, default_value in defaults.items():

@@ -119,3 +119,4 @@ cython_debug/
 data/
 chroma/
 ollama/
+logs/

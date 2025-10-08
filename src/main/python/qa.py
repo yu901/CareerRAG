@@ -4,20 +4,42 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain_core.language_models.llms import LLM
 from langchain_core.prompts import PromptTemplate
+from langchain_core.embeddings import Embeddings
 import os
+from src.main.python.utils import load_config
+from typing import List
 
-# 임베딩 및 ChromaDB 설정
-CHROMA_DATA_PATH = "chroma/career_rag_db"
-COLLECTION_NAME = "job_postings"
+# 설정 로드
+config = load_config()
+CHROMA_DATA_PATH = config['chroma_path']
+COLLECTION_NAME = config['collection_name']
+EMBEDDING_MODEL = config['embedding_model']
+
+
+class ChromaEmbeddingWrapper(Embeddings):
+    """ChromaDB의 SentenceTransformerEmbeddingFunction을 LangChain과 호환되도록 래핑"""
+
+    def __init__(self, model_name: str):
+        self.embedding_function = SentenceTransformerEmbeddingFunction(model_name=model_name)
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """문서 리스트를 임베딩"""
+        return self.embedding_function(texts)
+
+    def embed_query(self, text: str) -> List[float]:
+        """단일 쿼리를 임베딩"""
+        return self.embedding_function([text])[0]
+
 
 def get_embedding_function():
-    """임베딩 함수 로드."""
-    return HuggingFaceEmbeddings(model_name="jhgan/ko-sroberta-multitask")
+    """임베딩 함수 로드 - embedder.py와 동일한 방식 사용."""
+    return ChromaEmbeddingWrapper(model_name=EMBEDDING_MODEL)
+
 
 def get_vector_store():
     """ChromaDB 벡터 저장소 로드."""
@@ -26,7 +48,7 @@ def get_vector_store():
             f"ChromaDB path not found: {CHROMA_DATA_PATH}. "
             f"Please run the embedding script first (src/embedding/embedder.py)."
         )
-    
+
     embedding_function = get_embedding_function()
     vector_store = Chroma(
         persist_directory=CHROMA_DATA_PATH,
