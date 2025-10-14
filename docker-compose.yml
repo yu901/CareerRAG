@@ -5,6 +5,7 @@ x-airflow-common:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    - AIRFLOW__CORE__FERNET_KEY=awY0SC8R7HB8SsgxLaiT6ybx53znNWPJUXmedX8Yfbc=
   volumes:
     - ./src:/opt/airflow/src
     - ./dags:/opt/airflow/dags
@@ -47,6 +48,7 @@ services:
     command: airflow standalone
     ports:
       - "8080:8080"
+      - "4040:4040"  # Spark UI
     depends_on:
       airflow-init:
         condition: service_completed_successfully
